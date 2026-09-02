@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,15 +25,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Rebuild static site
+      - name: Prepare static site
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site /tmp/falfool
-          cat payload/site.b64.* | base64 --decode > /tmp/falfool-site.zip
-          unzip -q /tmp/falfool-site.zip -d /tmp/falfool
-          cp -a /tmp/falfool/falfool-site/. _site/
-          rm -rf _site/.github
+          mkdir -p _site
+          if [[ -f index.html && -f styles.css ]]; then
+            for file in index.html styles.css script.js favicon.svg robots.txt sitemap.xml README.md DESIGN.md CREDITS.md; do
+              [[ -f "$file" ]] && cp "$file" _site/
+            done
+          else
+            mkdir -p /tmp/falfool
+            cat payload/site.b64.* | base64 --decode > /tmp/falfool-site.zip
+            unzip -q /tmp/falfool-site.zip -d /tmp/falfool
+            cp -a /tmp/falfool/falfool-site/. _site/
+            rm -rf _site/.github
+          fi
+
+      - name: Materialize editable source
+        if: ${{ hashFiles('index.html') == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in index.html styles.css script.js favicon.svg robots.txt sitemap.xml README.md DESIGN.md CREDITS.md; do
+            cp "_site/$file" "$file"
+          done
+          git rm -r payload
+          git add index.html styles.css script.js favicon.svg robots.txt sitemap.xml README.md DESIGN.md CREDITS.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Materialize Falfool website source"
+          git push
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
