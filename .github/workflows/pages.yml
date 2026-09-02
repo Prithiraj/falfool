@@ -24,12 +24,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Rebuild static site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site /tmp/falfool
+          cat payload/site.b64.* | base64 --decode > /tmp/falfool-site.zip
+          unzip -q /tmp/falfool-site.zip -d /tmp/falfool
+          cp -a /tmp/falfool/falfool-site/. _site/
+          rm -rf _site/.github
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: _site
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
